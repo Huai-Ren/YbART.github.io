@@ -1,0 +1,46 @@
+{
+    "T2_Branch": {
+        "lines": [
+            "T2_Branch_Line"
+        ],
+        "legend": [
+            "T2_Branch_Mark"
+        ],
+        "terminalMarks": [
+            "T2_Branch_Auxiliary_Mark",
+            "T2_Branch_Main_Mark"
+        ],
+        "stationMarks": [
+            "_育才路",
+            "_未来城",
+            "_北新国际",
+            "_体育中心",
+            "_喷泉广场",
+            "_啤酒广场",
+            "_天池",
+            "_天池家园",
+            "_半岛大院",
+            "_春江盛景",
+            "_金帝庄园",
+            "_新业街",
+            "_银龙广场",
+            "_大观楼"
+        ],
+        "stationNames": [
+            "Yucai_Road",
+            "Weilaicheng",
+            "Beixin_International_Community",
+            "Sports_Center",
+            "Fountain_Square",
+            "Beer_Square",
+            "Tianchi",
+            "Tianchi_Jiayuan",
+            "Bandao_Dayuan",
+            "Chunjiang_Shengjing",
+            "Jindi_Zhuangyuan",
+            "Xinye_Street",
+            "Yinlong_Square",
+            "Daguan_Tower"
+        ]
+    }
+}

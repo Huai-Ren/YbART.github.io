@@ -1,0 +1,50 @@
+{
+    "T4_Branch": {
+        "lines": [
+            "T4_Branch_Line"
+        ],
+        "legend": [
+            "T4_Branch_Mark"
+        ],
+        "terminalMarks": [
+            "T4_Branch_Auxiliary_Mark",
+            "T4_Branch_Main_Mark"
+        ],
+        "stationMarks": [
+            "_智轨产业园",
+            "_临港车辆段",
+            "_磅礴路",
+            "_汽车产业园",
+            "_石鼓快速路",
+            "_启航路",
+            "_医用基地",
+            "_三块石",
+            "_欢乐田园",
+            "_长江第一湾",
+            "_漂海楼",
+            "_未来之门",
+            "_文体中心",
+            "_钻石城",
+            "_客运中心站",
+            "_南溪区政府"
+        ],
+        "stationNames": [
+            "ART_Industrial_Park",
+            "Lingang_Depot",
+            "Pangbo_Road",
+            "Automobile_Industrial_Park",
+            "Shigu_Expressway",
+            "Qihang_Road",
+            "Medical_Base",
+            "Sankuaishi",
+            "Happy_Farmland",
+            "Yangtze_River_First_Bend",
+            "Piaohailou",
+            "Weilaizhimen",
+            "Culture_and_Sports_Center",
+            "Zuanshicheng",
+            "Passenger_Transport_Center_Station",
+            "Nanxi_District_Peoples_Government"
+        ]
+    }
+}

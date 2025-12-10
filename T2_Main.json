@@ -1,0 +1,24 @@
+{
+    "T2_Main": {
+        "lines": [
+            "T2_Main_Line"
+        ],
+        "legend": [
+            "T2_Main_Mark"
+        ],
+        "terminalMarks": [
+            "T2_Main_Auxiliary_Mark",
+            "T2_Main_Main_Mark"
+        ],
+        "stationMarks": [
+            "_育才路",
+            "_振兴路",
+            "_啤酒广场"
+        ],
+        "stationNames": [
+            "Yucai_Road",
+            "Zhenxing_Road",
+            "Beer_Square"
+        ]
+    }
+}

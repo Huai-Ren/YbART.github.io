@@ -1,0 +1,24 @@
+{
+    "T1_Extension": {
+        "lines": [
+            "T1_Extension_Line"
+        ],
+        "legend": [
+            "T1_Extension_Mark"
+        ],
+        "terminalMarks": [
+            "T1_Extension_Auxiliary_Mark",
+            "T1_Extension_Main_Mark"
+        ],
+        "stationMarks": [
+            "_高铁宜宾西站",
+            "_天璇路",
+            "_高铁宜宾站"
+        ],
+        "stationNames": [
+            "Yibin_West_Railway_Station",
+            "Tianxuan_Road",
+            "Yibin_Railway_Station"
+        ]
+    }
+}

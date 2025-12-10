@@ -1,0 +1,48 @@
+{
+    "T1_Branch": {
+        "lines": [
+            "T1_Branch_Line"
+        ],
+        "legend": [
+            "T1_Branch_Mark"
+        ],
+        "terminalMarks": [
+            "T1_Branch_Auxiliary_Mark",
+            "T1_Branch_Main_Mark"
+        ],
+        "stationMarks": [
+            "_高铁宜宾西站",
+            "_天璇路",
+            "_大湾路",
+            "_时代广场",
+            "_新世纪广场",
+            "_酒都路",
+            "_长江桥南",
+            "_学堂路",
+            "_二医院临港",
+            "_长翠路",
+            "_新楼路",
+            "_四川轻化工大学",
+            "_成都外国语学院",
+            "_成都理工大学",
+            "_成都工业学院西南大学"
+        ],
+        "stationNames": [
+            "Yibin_West_Railway_Station",
+            "Tianxuan_Road",
+            "Dawan_Road",
+            "Shidai_Square",
+            "Xinshiji_Square",
+            "Jiudu_Road",
+            "Yangtze_River_Bridge_South",
+            "Xuetang_Road",
+            "Second_Peoples_Hosppital_Lingang",
+            "Changcui_Road",
+            "Xinlou_Road",
+            "Sichuan_University_of_Science_Engineering",
+            "Chengdu_International_Studies_University",
+            "Chengdu_University_of_Technology",
+            "Chengdu_Technological_University_Southwest_University"
+        ]
+    }
+}

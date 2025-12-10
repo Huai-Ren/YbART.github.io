@@ -1,0 +1,46 @@
+{
+    "T4_Main": {
+        "lines": [
+            "T4_Main_Line"
+        ],
+        "legend": [
+            "T4_Main_Mark"
+        ],
+        "terminalMarks": [
+            "T4_Main_Auxiliary_Mark",
+            "T4_Main_Main_Mark"
+        ],
+        "stationMarks": [
+            "_智轨产业园",
+            "_临港车辆段",
+            "_磅礴路",
+            "_汽车产业园",
+            "_石鼓快速路",
+            "_南溪经开区",
+            "_罗龙",
+            "_朝阳洞",
+            "_高职园",
+            "_仙源长江大桥",
+            "_南溪古街",
+            "_钻石城",
+            "_客运中心站",
+            "_南溪区政府"
+        ],
+        "stationNames": [
+            "ART_Industrial_Park",
+            "Lingang_Depot",
+            "Pangbo_Road",
+            "Automobile_Industrial_Park",
+            "Shigu_Expressway",
+            "Nanxi_Economic_Development_Zone",
+            "Luolong",
+            "Chaoyangdong",
+            "Higher_Vocational_Education_Park",
+            "Xianyuan_Yangtze_River_Bridge",
+            "Nanxi_Ancient_Street",
+            "Zuanshicheng",
+            "Passenger_Transport_Center_Station",
+            "Nanxi_District_Peoples_Government"
+        ]
+    }
+}

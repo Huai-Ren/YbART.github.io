@@ -1,0 +1,46 @@
+{
+    "T1_Main": {
+        "lines": [
+            "T1_Main_Line"
+        ],
+        "legend": [
+            "T1_Main_Mark"
+        ],
+        "terminalMarks": [
+            "T1_Main_Auxiliary_Mark",
+            "T1_Main_Main_Mark"
+        ],
+        "stationMarks": [
+            "_高铁宜宾西站",
+            "_天璇路",
+            "_大湾路",
+            "_时代广场",
+            "_新世纪广场",
+            "_酒都路",
+            "_长江桥南",
+            "_学堂路",
+            "_二医院临港",
+            "_长翠路",
+            "_紫金城",
+            "_西南交通大学",
+            "_牌坊路",
+            "_智轨产业园"
+        ],
+        "stationNames": [
+            "Yibin_West_Railway_Station",
+            "Tianxuan_Road",
+            "Dawan_Road",
+            "Shidai_Square",
+            "Xinshiji_Square",
+            "Jiudu_Road",
+            "Yangtze_River_Bridge_South",
+            "Xuetang_Road",
+            "Second_Peoples_Hosppital_Lingang",
+            "Changcui_Road",
+            "Zijincheng",
+            "Southwest_Jiaotong_University",
+            "Paifang_Road",
+            "ART_Industrial_Park"
+        ]
+    }
+}
