@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智轨线网交互图</title>
+    <title>交互测试</title>
     <style>
         /* Reset */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -159,6 +159,28 @@
                         console.log('已绑定 SVG 图例：', legendId);
                     } catch (e) {
                         console.warn('绑定图例事件失败：', e, legendId);
+                    }
+
+                    // 额外：为该线路的 terminalMarks 添加点击绑定（支持多个终点标识）
+                    if (Array.isArray(line.terminalMarks)) {
+                        line.terminalMarks.forEach(tid => {
+                            if (!tid) return;
+                            const tEl = findSvgElement(svgDoc, tid) || svgDoc.getElementById(tid);
+                            if (!tEl) {
+                                console.warn('未在SVG中找到 terminalMark 元素（跳过）：', tid);
+                                return;
+                            }
+                            try {
+                                tEl.addEventListener('click', () => {
+                                    console.log('SVG 终点标记被点击：', tid, '-> 线路', lineId);
+                                    highlightLine(line);
+                                });
+                                if (tEl.style) tEl.style.cursor = 'pointer';
+                                console.log('已绑定 SVG 终点标记：', tid);
+                            } catch (err) {
+                                console.warn('绑定 terminalMark 事件失败：', err, tid);
+                            }
+                        });
                     }
                 });
                 console.info('尝试绑定的图例 id 列表：', attempts);
