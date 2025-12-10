@@ -25,18 +25,18 @@
            使用 devicePixelRatio 的逆缩放近似保持在不同缩放级别下的视觉大小不变。
         */
         #resetBtn {
-            position: absolute;
-            right: 2%;
-            bottom: 3%;
+            position: fixed;
+            right: 2vw;    /* 改用视口宽度单位，适配不同屏幕且缩放更稳定 */
+            bottom: 3vh;   /* 改用视口高度单位 */
             z-index: 9999;
-            padding: 10px 14px;
+            padding: 0.8vw 1.2vw;
             background-color: #409eff;
             color: #fff;
             border: none;
-            border-radius: 6px;
+            border-radius: 0.5vw;
             cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 1.2vw;
+            box-shadow: 0 0.2vw 0.8vw rgba(0,0,0,0.15);
             transform-origin: center center;
         }
         #resetBtn:hover { background-color: #66b1ff; }
