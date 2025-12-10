@@ -5,36 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>测试交互</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: #fff;
-        }
-        /* 使 SVG 占满整个窗口 */
+        /* Reset */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; width: 100%; }
+
+        /* 使嵌入的 SVG 占满整个视口 */
         #svgContainer {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-            overflow: auto;
-            background: #fff;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #ffffff;
             z-index: 1;
         }
-        /* SVG容器样式 */
-        #svgContainer {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        /* 固定在右下角的重置按钮 */
+        /* 让 object 中的 svg 完全填充容器 */
+        #svgContainer object { width: 100%; height: 100%; display: block; }
+
+        /* 固定在右下角的重置按钮（保持可点击，不随页面滚动） */
         #resetBtn {
             position: fixed;
             right: 20px;
@@ -42,52 +29,32 @@
             z-index: 9999;
             padding: 10px 14px;
             background-color: #409eff;
-            color: white;
+            color: #fff;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transform-origin: center center;
         }
         #resetBtn:hover { background-color: #66b1ff; }
-        /* 变暗样式（非选中元素） */
-        .dimmed {
-            opacity: 0.2;
-        }
-    </style>
-    <!-- 固定重置按钮，右下角 -->
-    <button id="resetBtn">重置</button>
 
-    <!-- SVG容器（嵌入同目录的SVG文件），占满全屏 -->
-    <div id="svgContainer">
-        <object id="lineSvg" data="art25121009.svg" type="image/svg+xml"></object>
-    </div>
-        .html-legend-entry {
-            padding: 6px 10px;
-            border: 1px solid #d9d9d9;
-            border-radius: 4px;
-            background: #fff;
-            cursor: pointer;
-            font-size: 13px;
-            margin-right: 6px;
-        }
-        .html-legend-entry.active {
-            background: #409eff;
-            color: #fff;
-            border-color: #409eff;
-        }
+        /* SVG 内的变暗/高亮类（作为备用，注入到 SVG 内也会使用） */
+        .dimmed { opacity: 0.2; filter: grayscale(100%); transition: opacity .25s ease; }
+        .highlighted { opacity: 1; filter: none; }
+
+        /* 页面侧边 HTML legend（如果存在） */
+        .html-legend-entry { padding:6px 10px; border:1px solid #d9d9d9; border-radius:4px; background:#fff; cursor:pointer; margin-right:6px; }
+        .html-legend-entry.active { background:#409eff; color:#fff; border-color:#409eff; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>宜宾智轨（测试）</h1>
-        <button id="resetBtn">重置所有线路显示</button>
-            <!-- 页面侧边图例（当 SVG 内图例不可绑定时作为后备） -->
-            <div id="htmlLegendContainer" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div>
-        <!-- SVG容器（嵌入同目录的SVG文件） -->
-        <div id="svgContainer">
-            <object id="lineSvg" data="art25121009.svg" type="image/svg+xml"></object>
-        </div>
+    <!-- 固定重置按钮（右下角） -->
+    <button id="resetBtn">重置</button>
+
+    <!-- SVG 容器（占满全屏） -->
+    <div id="svgContainer">
+        <object id="lineSvg" data="art25121009.svg" type="image/svg+xml"></object>
     </div>
 
     <script>
