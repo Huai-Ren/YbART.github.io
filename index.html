@@ -2,17 +2,16 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>25121905</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>25121906</title>
     <style>
         :root { --nav-height: 64px; --footer-height: var(--nav-height); }
         /* Reset */
-        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { 
             height: 100%; 
             width: 100%; 
             overflow: hidden; /* 防止整个页面滚动 */
-            position: fixed; /* 固定整个页面，防止缩放 */
         }
 
         /* 顶部固定导航栏 */
@@ -28,9 +27,6 @@
             padding: 0 16px;
             z-index: 1000;
             border-bottom: none;
-            /* 防止缩放影响 */
-            transform: translateZ(0);
-            backface-visibility: hidden;
         }
         /* 在导航底部添加一条灰色的边框，宽度为页面的 95% 并居中 */
         #topNav::after {
@@ -49,7 +45,6 @@
         }
         #topNav .nav-left { flex: 0 0 auto; }
         #topNav .nav-center { flex: 1; justify-content: center; }
-        /* title-wrap removed: title and icon are separate nav areas */
         .nav-icon-btn {
             width: 36px; height: 36px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
             background: #fff; border: 1px solid #ccc; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -70,23 +65,23 @@
             overflow: auto;
             background: #ffffff;
             z-index: 1;
-            /* 允许缩放和滑动 */
-            touch-action: pan-x pan-y;
             -webkit-overflow-scrolling: touch;
         }
+        
         /* SVG wrapper 用于缩放变换 */
         #svgWrapper {
-            width: 100%;
-            height: 100%;
             position: relative;
             transform-origin: 0 0;
             transition: transform 0.1s ease-out;
+            min-width: 100%;
+            min-height: 100%;
         }
+        
         /* object 中的 svg 保持初始尺寸 */
         #svgContainer object {
+            display: block;
             width: 100%;
             height: 100%;
-            display: block;
             pointer-events: auto;
         }
 
@@ -117,9 +112,6 @@
             padding: 0 16px;
             z-index: 1000;
             border-top: none;
-            /* 防止缩放影响 */
-            transform: translateZ(0);
-            backface-visibility: hidden;
         }
         /* 在页脚顶部添加一条灰色的边框，宽度为页面的 95% 并居中 */
         #pageFooter::before {
@@ -148,32 +140,6 @@
         /* 页面侧边 HTML legend（如果存在） */
         .html-legend-entry { padding:6px 10px; border:1px solid #d9d9d9; border-radius:4px; background:#fff; cursor:pointer; margin-right:6px; }
         .html-legend-entry.active { background:#409eff; color:#fff; border-color:#409eff; }
-
-        /* 缩放控制按钮 */
-        .zoom-controls {
-            position: fixed;
-            right: 20px;
-            bottom: calc(var(--footer-height) + 20px);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .zoom-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: white;
-            border: 1px solid #ccc;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            cursor: pointer;
-            user-select: none;
-            touch-action: manipulation;
-        }
 
         /* 模态框样式（带过渡动画） */
         .modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
@@ -218,13 +184,6 @@
         </div>
     </div>
 
-    <!-- 缩放控制按钮 -->
-    <div class="zoom-controls">
-        <button class="zoom-btn" id="zoomInBtn">+</button>
-        <button class="zoom-btn" id="zoomOutBtn">−</button>
-        <button class="zoom-btn" id="resetZoomBtn">↺</button>
-    </div>
-
     <!-- 图片模态框（默认隐藏） -->
     <div id="imageModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="imageModalTitle">
         <div class="modal-backdrop" data-close></div>
@@ -256,40 +215,73 @@
         let maxScale = 3;
         let lastDistance = 0;
         let isZooming = false;
+        let initialScale = 1;
+        let lastTouchTime = 0;
 
         // 初始化缩放功能
         function initZoom() {
             const svgContainer = document.getElementById('svgContainer');
             const svgWrapper = document.getElementById('svgWrapper');
-            const zoomInBtn = document.getElementById('zoomInBtn');
-            const zoomOutBtn = document.getElementById('zoomOutBtn');
-            const resetZoomBtn = document.getElementById('resetZoomBtn');
-
+            
             if (!svgContainer || !svgWrapper) return;
+
+            // 阻止双指缩放的默认行为（页面缩放）
+            document.addEventListener('gesturestart', function(e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('gesturechange', function(e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('gestureend', function(e) {
+                e.preventDefault();
+            });
 
             // 双指缩放事件处理
             svgContainer.addEventListener('touchstart', (e) => {
+                // 如果双指触摸，开始缩放
                 if (e.touches.length === 2) {
                     e.preventDefault();
+                    e.stopPropagation();
+                    
                     isZooming = true;
                     lastDistance = getDistance(e.touches[0], e.touches[1]);
+                    
+                    // 记录初始缩放比例
+                    initialScale = scale;
+                    
+                    // 添加缩放时的样式
+                    svgContainer.style.overflow = 'hidden';
+                    svgWrapper.style.transition = 'none';
                 }
             });
 
             svgContainer.addEventListener('touchmove', (e) => {
+                // 如果双指触摸且正在缩放
                 if (e.touches.length === 2 && isZooming) {
                     e.preventDefault();
-                    const currentDistance = getDistance(e.touches[0], e.touches[1]);
-                    const delta = currentDistance - lastDistance;
+                    e.stopPropagation();
                     
-                    // 计算新的缩放比例
-                    const newScale = scale + delta * 0.01;
+                    const currentDistance = getDistance(e.touches[0], e.touches[1]);
+                    
+                    // 防止过快的缩放
+                    const now = Date.now();
+                    if (now - lastTouchTime < 16) return; // 约60fps
+                    lastTouchTime = now;
+                    
+                    // 计算缩放比例变化
+                    const delta = (currentDistance - lastDistance) / 100;
+                    
+                    // 计算新的缩放比例（更平滑）
+                    let newScale = initialScale + delta;
                     
                     // 限制缩放范围
-                    if (newScale >= minScale && newScale <= maxScale) {
-                        scale = newScale;
-                        applyTransform();
-                    }
+                    newScale = Math.max(minScale, Math.min(maxScale, newScale));
+                    
+                    // 应用缩放
+                    scale = newScale;
+                    applyTransform();
                     
                     lastDistance = currentDistance;
                 }
@@ -297,35 +289,50 @@
 
             svgContainer.addEventListener('touchend', (e) => {
                 if (e.touches.length < 2) {
-                    isZooming = false;
+                    if (isZooming) {
+                        isZooming = false;
+                        
+                        // 恢复样式
+                        svgContainer.style.overflow = 'auto';
+                        svgWrapper.style.transition = 'transform 0.1s ease-out';
+                        
+                        // 限制到最小或最大缩放比例
+                        if (scale < minScale) {
+                            scale = minScale;
+                            applyTransform();
+                        } else if (scale > maxScale) {
+                            scale = maxScale;
+                            applyTransform();
+                        }
+                    }
                 }
             });
 
-            // 缩放按钮事件
-            zoomInBtn.addEventListener('click', () => {
-                scale = Math.min(maxScale, scale + 0.2);
-                applyTransform();
-            });
-
-            zoomOutBtn.addEventListener('click', () => {
-                scale = Math.max(minScale, scale - 0.2);
-                applyTransform();
-            });
-
-            resetZoomBtn.addEventListener('click', () => {
-                scale = 1;
-                applyTransform();
-                // 同时重置SVG位置到左上角
-                svgContainer.scrollLeft = 0;
-                svgContainer.scrollTop = 0;
-            });
-
-            // 阻止双指缩放时的页面滚动
-            document.addEventListener('touchmove', (e) => {
-                if (e.touches.length > 1) {
-                    e.preventDefault();
+            // 添加双击重置功能
+            svgContainer.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTouchTime;
+                    
+                    if (tapLength < 300 && tapLength > 0) {
+                        // 双击事件
+                        scale = 1;
+                        applyTransform();
+                        // 重置滚动位置
+                        svgContainer.scrollLeft = 0;
+                        svgContainer.scrollTop = 0;
+                    }
+                    lastTouchTime = currentTime;
                 }
-            }, { passive: false });
+            }, {passive: true});
+
+            // 允许正常的单指滚动
+            svgContainer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && !isZooming) {
+                    // 允许单指滚动
+                    return;
+                }
+            }, {passive: true});
         }
 
         // 计算两点之间的距离
@@ -575,6 +582,12 @@
 
                     const allEls = svgDoc.querySelectorAll(".dimmed");
                     allEls.forEach(el => { try { el.classList.remove("dimmed"); } catch(e){} });
+                    
+                    // 同时重置缩放
+                    scale = 1;
+                    applyTransform();
+                    svgContainer.scrollLeft = 0;
+                    svgContainer.scrollTop = 0;
                 });
 
                 // 模态框初始化（在页面级别进行，不依赖 SVG 加载）
@@ -615,6 +628,28 @@
 
         // 初始化缩放功能
         document.addEventListener('DOMContentLoaded', initZoom);
+        
+        // 添加重置缩放功能到重置按钮
+        document.addEventListener('DOMContentLoaded', function() {
+            const resetBtn = document.getElementById('resetBtn');
+            const svgContainer = document.getElementById('svgContainer');
+            
+            if (resetBtn && svgContainer) {
+                // 保存原始的点击事件处理
+                const originalClick = resetBtn.onclick;
+                
+                resetBtn.addEventListener('click', function() {
+                    // 重置缩放
+                    scale = 1;
+                    applyTransform();
+                    svgContainer.scrollLeft = 0;
+                    svgContainer.scrollTop = 0;
+                    
+                    // 执行原始的点击事件
+                    if (originalClick) originalClick();
+                });
+            }
+        });
     </script>
 </body>
 </html>
