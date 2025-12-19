@@ -2,13 +2,13 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>25121903</title>
     <style>
         :root { --nav-height: 64px; --footer-height: var(--nav-height); }
         /* Reset */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; width: 100%; }
+        html, body { height: 100%; width: 100%; touch-action: none; }
 
         /* 顶部固定导航栏 */
         #topNav {
@@ -17,14 +17,14 @@
             left: 0;
             right: 0;
             height: var(--nav-height);
-            background: transparent; /* 取消背景 */
+            background: transparent;
             display: flex;
             align-items: center;
             padding: 0 16px;
             z-index: 1000;
             border-bottom: none;
+            touch-action: none;
         }
-        /* 在导航底部添加一条灰色的边框，宽度为页面的 95% 并居中 */
         #topNav::after {
             content: "";
             position: absolute;
@@ -41,7 +41,6 @@
         }
         #topNav .nav-left { flex: 0 0 auto; }
         #topNav .nav-center { flex: 1; justify-content: center; }
-        /* title-wrap removed: title and icon are separate nav areas */
         .nav-icon-btn {
             width: 36px; height: 36px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
             background: #fff; border: 1px solid #ccc; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -56,18 +55,29 @@
         #svgContainer {
             position: relative;
             width: 100%;
-            /* 减去顶部导航和底部页脚的高度，避免被遮挡 */
             height: calc(100vh - var(--nav-height) - var(--footer-height));
             top: var(--nav-height);
-            overflow: auto; /* 可水平/垂直滚动 */
+            overflow: auto;
             background: #ffffff;
             z-index: 1;
-            /* margin-top: var(--nav-height); */
+            touch-action: pinch-zoom pan;
+            transform-origin: 0 0;
         }
-        /* object 中的 svg 保持高度填充，宽度自适应原始尺寸（可超出视口） */
-        #svgContainer object { width: auto; height: 100%; display: block; min-width: 100%; }
+        #svgWrapper {
+            position: relative;
+            width: auto;
+            height: 100%;
+            transform-origin: 0 0;
+        }
+        #svgContainer object { 
+            width: auto; 
+            height: 100%; 
+            display: block; 
+            min-width: 100%;
+            transform-origin: 0 0;
+        }
 
-        /* 页脚内的重置按钮（已移入页脚右侧） */
+        /* 重置按钮样式 */
         #resetBtn {
             padding: 6px 12px;
             background-color: #409eff;
@@ -81,21 +91,21 @@
         }
         #resetBtn:hover { background-color: #66b1ff; }
 
-        /* 底部固定页脚（样式与导航栏一致，高度为导航栏的一半） */
+        /* 底部固定页脚 */
         #pageFooter {
             position: fixed;
             left: 0;
             right: 0;
             bottom: 0;
             height: var(--footer-height);
-            background: transparent; /* 取消背景 */
+            background: transparent;
             display: flex;
             align-items: center;
             padding: 0 16px;
             z-index: 1000;
             border-top: none;
+            touch-action: none;
         }
-        /* 在页脚顶部添加一条灰色的边框，宽度为页面的 95% 并居中 */
         #pageFooter::before {
             content: "";
             position: absolute;
@@ -115,15 +125,15 @@
         #pageFooter .footer-center { flex: 1; justify-content: center; }
         #pageFooter .footer-right { flex: 0 0 auto; }
 
-        /* SVG 内的变暗/高亮类（作为备用，注入到 SVG 内也会使用） */
+        /* SVG 内的变暗/高亮类 */
         .dimmed { opacity: 0.2; filter: grayscale(100%); transition: opacity .25s ease; }
         .highlighted { opacity: 1; filter: none; }
 
-        /* 页面侧边 HTML legend（如果存在） */
+        /* 页面侧边 HTML legend */
         .html-legend-entry { padding:6px 10px; border:1px solid #d9d9d9; border-radius:4px; background:#fff; cursor:pointer; margin-right:6px; }
         .html-legend-entry.active { background:#409eff; color:#fff; border-color:#409eff; }
 
-        /* 模态框样式（带过渡动画） */
+        /* 模态框样式 */
         .modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
         .modal.open { opacity: 1; pointer-events: auto; }
         .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background 220ms ease; }
@@ -173,13 +183,19 @@
 
     <!-- SVG 容器（占满全屏） -->
     <div id="svgContainer">
-        <object id="lineSvg" data="art25121903.svg" type="image/svg+xml"></object>
+        <div id="svgWrapper">
+            <object id="lineSvg" data="art25121903.svg" type="image/svg+xml"></object>
+        </div>
     </div>
 
     <script>
         // 全局变量：存储所有线路的映射数据
         let allLineData = {};
-        // 线路JSON文件列表（删除了T1_Main.json和T4_Main.json）
+        // 缩放相关变量
+        let currentScale = 1;
+        let currentX = 0;
+        let currentY = 0;
+        // 线路JSON文件列表
         const lineJsonFiles = [
             "T1_Branch.json",
             "T1_Extension.json",
@@ -206,6 +222,170 @@
             }
         }
 
+        // 初始化缩放控制
+        function initZoomControl() {
+            const svgContainer = document.getElementById('svgContainer');
+            const svgWrapper = document.getElementById('svgWrapper');
+            let isDragging = false;
+            let startX, startY;
+            let startScale = currentScale;
+            
+            // 处理触摸缩放
+            let touchDistance = 0;
+            let lastTouchPoints = [];
+
+            // 计算两点之间的距离
+            function getTouchDistance(touches) {
+                if (touches.length < 2) return 0;
+                const [t1, t2] = touches;
+                return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            }
+
+            // 计算触摸中心点
+            function getTouchCenter(touches) {
+                if (touches.length < 2) return { x: 0, y: 0 };
+                const [t1, t2] = touches;
+                return {
+                    x: (t1.clientX + t2.clientX) / 2,
+                    y: (t1.clientY + t2.clientY) / 2
+                };
+            }
+
+            // 更新缩放和位置
+            function updateTransform() {
+                svgWrapper.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale})`;
+            }
+
+            // 触摸开始
+            svgContainer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    // 单指拖动
+                    isDragging = true;
+                    startX = e.touches[0].clientX - currentX;
+                    startY = e.touches[0].clientY - currentY;
+                } else if (e.touches.length === 2) {
+                    // 双指缩放
+                    touchDistance = getTouchDistance(e.touches);
+                    startScale = currentScale;
+                    lastTouchPoints = [
+                        { x: e.touches[0].clientX, y: e.touches[0].clientY },
+                        { x: e.touches[1].clientX, y: e.touches[1].clientY }
+                    ];
+                }
+                e.preventDefault();
+            });
+
+            // 触摸移动
+            svgContainer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isDragging) {
+                    // 单指拖动
+                    currentX = e.touches[0].clientX - startX;
+                    currentY = e.touches[0].clientY - startY;
+                    updateTransform();
+                } else if (e.touches.length === 2) {
+                    // 双指缩放
+                    const newDistance = getTouchDistance(e.touches);
+                    if (touchDistance > 0) {
+                        const scaleFactor = newDistance / touchDistance;
+                        currentScale = startScale * scaleFactor;
+                        // 限制缩放范围（0.5-3倍）
+                        currentScale = Math.max(0.5, Math.min(3, currentScale));
+                        
+                        // 基于触摸中心调整位置
+                        const center = getTouchCenter(e.touches);
+                        const rect = svgContainer.getBoundingClientRect();
+                        const relativeX = center.x - rect.left - currentX;
+                        const relativeY = center.y - rect.top - currentY;
+                        
+                        currentX = center.x - rect.left - relativeX * (currentScale / startScale);
+                        currentY = center.y - rect.top - relativeY * (currentScale / startScale);
+                        
+                        updateTransform();
+                    }
+                    lastTouchPoints = [
+                        { x: e.touches[0].clientX, y: e.touches[0].clientY },
+                        { x: e.touches[1].clientX, y: e.touches[1].clientY }
+                    ];
+                }
+                e.preventDefault();
+            });
+
+            // 触摸结束
+            svgContainer.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    isDragging = false;
+                    touchDistance = 0;
+                } else if (e.touches.length === 1) {
+                    isDragging = true;
+                    startX = e.touches[0].clientX - currentX;
+                    startY = e.touches[0].clientY - currentY;
+                }
+            });
+
+            // 鼠标滚轮缩放（桌面端兼容）
+            svgContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = svgContainer.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 计算缩放因子
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                const newScale = Math.max(0.5, Math.min(3, currentScale + delta));
+                
+                // 调整位置以保持鼠标点在缩放后位置不变
+                currentX = mouseX - (mouseX - currentX) * (newScale / currentScale);
+                currentY = mouseY - (mouseY - currentY) * (newScale / currentScale);
+                
+                currentScale = newScale;
+                updateTransform();
+            });
+
+            // 鼠标拖动（桌面端兼容）
+            svgContainer.addEventListener('mousedown', (e) => {
+                if (e.button === 0) { // 左键
+                    isDragging = true;
+                    startX = e.clientX - currentX;
+                    startY = e.clientY - currentY;
+                    svgContainer.style.cursor = 'grabbing';
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    currentX = e.clientX - startX;
+                    currentY = e.clientY - startY;
+                    updateTransform();
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                svgContainer.style.cursor = 'grab';
+            });
+
+            // 重置缩放和位置
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                currentScale = 1;
+                currentX = 0;
+                currentY = 0;
+                updateTransform();
+                
+                // 重置SVG元素显示状态
+                const svgDoc = document.getElementById('lineSvg').contentDocument;
+                if (svgDoc) {
+                    const allEls = svgDoc.querySelectorAll(".dimmed");
+                    allEls.forEach(el => { 
+                        try { el.classList.remove("dimmed"); } catch(e){} 
+                    });
+                }
+            });
+
+            // 初始化样式
+            svgContainer.style.cursor = 'grab';
+            updateTransform();
+        }
+
         // 步骤2：初始化SVG交互（等待SVG加载完成）
         (function setupSvgHandler(){
             const lineSvgEl = document.getElementById("lineSvg");
@@ -215,25 +395,20 @@
             }
 
             lineSvgEl.addEventListener("load", async function() {
-            // 先加载所有线路数据
-            await loadAllLineData();
-                const svgDoc = this.contentDocument; // 获取SVG文档对象
+                // 先加载所有线路数据
+                await loadAllLineData();
+                const svgDoc = this.contentDocument;
                 if (!svgDoc) {
                     console.warn('SVG 的 contentDocument 未能获取，可能被浏览器或安全策略阻止。');
                     return;
                 }
 
-                const resetBtn = document.getElementById("resetBtn");
-                const htmlLegendContainer = document.getElementById('htmlLegendContainer');
-
-                // 将用于高亮/变暗的样式注入到 SVG 文档内（嵌入的 SVG 需要自身的样式规则）
+                // 注入样式，确保 SVG 内的 .dimmed/.highlighted 能生效
                 function injectSvgStyles(svgDoc) {
                     try {
                         const svgRoot = svgDoc.documentElement || svgDoc.querySelector('svg');
                         if (!svgRoot) return;
-                        // 创建 <style> 元素并添加到 SVG 根
                         const styleEl = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'style');
-                        // 使用简单的 opacity 与 pointer-events 控制以保证兼容性
                         styleEl.textContent = `
                         .dimmed { opacity: 0.2 !important; filter: grayscale(100%) !important; }
                         .highlighted { opacity: 1 !important; filter: none !important; }
@@ -245,192 +420,174 @@
                     }
                 }
 
-                // 注入样式，确保 SVG 内的 .dimmed/.highlighted 能生效
-                try { injectSvgStyles(svgDoc); } catch(e) { console.warn('注入样式时出错：', e); }
-
                 // 绑定图例的点击事件
-            function bindLegendClick() {
-                // 遍历所有线路的图例ID
-                const attempts = [];
-                Object.entries(allLineData).forEach(([lineId, line]) => {
-                    const legendId = (line.legend && line.legend[0]) || null;
-                    if (!legendId) return;
-                    attempts.push(legendId);
+                function bindLegendClick() {
+                    const attempts = [];
+                    Object.entries(allLineData).forEach(([lineId, line]) => {
+                        const legendId = (line.legend && line.legend[0]) || null;
+                        if (!legendId) return;
+                        attempts.push(legendId);
 
-                    // 尝试在SVG中查找图例元素（支持部分 id 匹配或文字匹配）
-                    const legendEl = findSvgElement(svgDoc, legendId);
-                    if (!legendEl) {
-                        console.warn('未在SVG中找到图例元素，跳过（会在页面侧边生成后备图例）：', legendId);
-                        return;
-                    }
+                        const legendEl = findSvgElement(svgDoc, legendId);
+                        if (!legendEl) {
+                            console.warn('未在SVG中找到图例元素，跳过（会在页面侧边生成后备图例）：', legendId);
+                            return;
+                        }
 
-                    // 给图例添加点击事件（做好空值检查），并记录绑定信息
-                    try {
-                        legendEl.addEventListener("click", () => {
-                            console.log('SVG 内图例被点击：', legendId);
+                        try {
+                            legendEl.addEventListener("click", () => {
+                                console.log('SVG 内图例被点击：', legendId);
+                                highlightLine(line);
+                            });
+                            if (legendEl.style) legendEl.style.cursor = "pointer";
+                            console.log('已绑定 SVG 图例：', legendId);
+                        } catch (e) {
+                            console.warn('绑定图例事件失败：', e, legendId);
+                        }
+
+                        // 为terminalMarks添加点击绑定
+                        if (Array.isArray(line.terminalMarks)) {
+                            line.terminalMarks.forEach(tid => {
+                                if (!tid) return;
+                                const tEl = findSvgElement(svgDoc, tid) || svgDoc.getElementById(tid);
+                                if (!tEl) {
+                                    console.warn('未在SVG中找到 terminalMark 元素（跳过）：', tid);
+                                    return;
+                                }
+                                try {
+                                    tEl.addEventListener('click', () => {
+                                        console.log('SVG 终点标记被点击：', tid, '-> 线路', lineId);
+                                        highlightLine(line);
+                                    });
+                                    if (tEl.style) tEl.style.cursor = 'pointer';
+                                    console.log('已绑定 SVG 终点标记：', tid);
+                                } catch (err) {
+                                    console.warn('绑定 terminalMark 事件失败：', err, tid);
+                                }
+                            });
+                        }
+                    });
+                    console.info('尝试绑定的图例 id 列表：', attempts);
+                }
+
+                // 生成页面侧边的 HTML legend 作为后备
+                function createHtmlLegend() {
+                    const htmlLegendContainer = document.getElementById('htmlLegendContainer');
+                    if (!htmlLegendContainer) return;
+                    htmlLegendContainer.innerHTML = '';
+                    Object.entries(allLineData).forEach(([lineId, line]) => {
+                        const legendId = (line.legend && line.legend[0]) || lineId;
+                        const entry = document.createElement('button');
+                        entry.type = 'button';
+                        entry.className = 'html-legend-entry';
+                        entry.textContent = lineId;
+                        entry.title = legendId;
+                        entry.addEventListener('click', () => {
+                            console.log('HTML legend 点击：', lineId, legendId);
+                            const others = htmlLegendContainer.querySelectorAll('.html-legend-entry');
+                            others.forEach(o => o.classList.remove('active'));
+                            entry.classList.add('active');
                             highlightLine(line);
                         });
-                        if (legendEl.style) legendEl.style.cursor = "pointer";
-                        console.log('已绑定 SVG 图例：', legendId);
-                    } catch (e) {
-                        console.warn('绑定图例事件失败：', e, legendId);
-                    }
-
-                    // 额外：为该线路的 terminalMarks 添加点击绑定（支持多个终点标识）
-                    if (Array.isArray(line.terminalMarks)) {
-                        line.terminalMarks.forEach(tid => {
-                            if (!tid) return;
-                            const tEl = findSvgElement(svgDoc, tid) || svgDoc.getElementById(tid);
-                            if (!tEl) {
-                                console.warn('未在SVG中找到 terminalMark 元素（跳过）：', tid);
-                                return;
-                            }
-                            try {
-                                tEl.addEventListener('click', () => {
-                                    console.log('SVG 终点标记被点击：', tid, '-> 线路', lineId);
-                                    highlightLine(line);
-                                });
-                                if (tEl.style) tEl.style.cursor = 'pointer';
-                                console.log('已绑定 SVG 终点标记：', tid);
-                            } catch (err) {
-                                console.warn('绑定 terminalMark 事件失败：', err, tid);
-                            }
-                        });
-                    }
-                });
-                console.info('尝试绑定的图例 id 列表：', attempts);
-            }
-
-            // 生成页面侧边的 HTML legend 作为后备（总会生成），并绑定点击事件到 highlightLine
-            function createHtmlLegend() {
-                if (!htmlLegendContainer) return;
-                htmlLegendContainer.innerHTML = '';
-                Object.entries(allLineData).forEach(([lineId, line]) => {
-                    const legendId = (line.legend && line.legend[0]) || lineId;
-                    const entry = document.createElement('button');
-                    entry.type = 'button';
-                    entry.className = 'html-legend-entry';
-                    entry.textContent = lineId;
-                    entry.title = legendId;
-                    entry.addEventListener('click', () => {
-                        console.log('HTML legend 点击：', lineId, legendId);
-                        // 激活样式，仅高亮当前 HTML legend
-                        const others = htmlLegendContainer.querySelectorAll('.html-legend-entry');
-                        others.forEach(o => o.classList.remove('active'));
-                        entry.classList.add('active');
-                        highlightLine(line);
+                        htmlLegendContainer.appendChild(entry);
                     });
-                    htmlLegendContainer.appendChild(entry);
-                });
-            }
+                }
 
-            // 在SVG中查找元素的健壮方法：先按 id 精确查找，再尝试部分匹配 id、最后按显示文字匹配
-            function findSvgElement(svgDoc, idOrLabel) {
-                if (!svgDoc || !idOrLabel) return null;
+                // 在SVG中查找元素的健壮方法
+                function findSvgElement(svgDoc, idOrLabel) {
+                    if (!svgDoc || !idOrLabel) return null;
 
-                // 1) 精确 id
-                try { const exact = svgDoc.getElementById(idOrLabel); if (exact) return exact; } catch(e) {}
+                    // 1) 精确 id
+                    try { const exact = svgDoc.getElementById(idOrLabel); if (exact) return exact; } catch(e) {}
 
-                // 2) 部分匹配 id（包含）
-                try {
-                    const partial = svgDoc.querySelector(`[id*="${CSS.escape ? CSS.escape(idOrLabel) : idOrLabel}"]`);
-                    if (partial) return partial;
-                } catch(e) { /* ignore */ }
+                    // 2) 部分匹配 id
+                    try {
+                        const partial = svgDoc.querySelector(`[id*="${CSS.escape ? CSS.escape(idOrLabel) : idOrLabel}"]`);
+                        if (partial) return partial;
+                    } catch(e) {}
 
-                // 3) 在所有带 id 的元素里查找包含子串的 id（兼容不支持 CSS.escape 的环境）
-                try {
-                    const els = svgDoc.querySelectorAll('[id]');
-                    for (let i=0;i<els.length;i++){
-                        const el = els[i];
-                        if (el.id && el.id.indexOf(idOrLabel) !== -1) return el;
-                    }
-                } catch(e){}
+                    // 3) 遍历所有带id元素查找
+                    try {
+                        const els = svgDoc.querySelectorAll('[id]');
+                        for (let i=0;i<els.length;i++){
+                            const el = els[i];
+                            if (el.id && el.id.indexOf(idOrLabel) !== -1) return el;
+                        }
+                    } catch(e){}
 
-                // 4) 按文本内容查找（去下划线/空格比较）
-                try {
-                    const normalize = s => (s || '').toString().trim().replace(/[_\s]+/g, '').toLowerCase();
-                    const target = normalize(idOrLabel);
-                    const textEls = svgDoc.querySelectorAll('text, tspan');
-                    for (let i=0;i<textEls.length;i++){
-                        const t = textEls[i];
-                        if (normalize(t.textContent) === target) return t;
-                    }
-                } catch(e){}
+                    // 4) 按文本内容查找
+                    try {
+                        const normalize = s => (s || '').toString().trim().replace(/[_\s]+/g, '').toLowerCase();
+                        const target = normalize(idOrLabel);
+                        const textEls = svgDoc.querySelectorAll('text, tspan');
+                        for (let i=0;i<textEls.length;i++){
+                            const t = textEls[i];
+                            if (normalize(t.textContent) === target) return t;
+                        }
+                    } catch(e){}
 
-                return null;
-            }
+                    return null;
+                }
 
-            // 高亮指定线路的所有元素
-            function highlightLine(targetLine) {
-                // 1. 先将所有元素设为“变暗”状态（除Information层）
-                dimAllElements(svgDoc);
+                // 高亮指定线路的所有元素
+                function highlightLine(targetLine) {
+                    // 1. 先将所有元素设为“变暗”状态（除Information层）
+                    dimAllElements(svgDoc);
 
-                // 2. 收集当前线路的所有关联元素ID
-                const highlightIds = [
-                    ...targetLine.lines,
-                    ...targetLine.legend,
-                    ...targetLine.terminalMarks,
-                    ...targetLine.stationMarks,
-                    ...targetLine.stationNames
-                ];
-
-                // 3. 将这些元素设为“高亮”状态
-                highlightIds.forEach(id => {
-                    if (!id) return;
-                    let el = null;
-                    try { el = svgDoc.getElementById(id); } catch(e) { el = null; }
-                    if (!el) el = findSvgElement(svgDoc, id);
-                    if (el) { // 先判断元素是否存在
-                        try { el.classList.remove("dimmed"); } catch(e) { /* ignore */ }
-                    } else {
-                        console.warn(`未找到元素：${id}`); // 控制台提示缺失的元素ID
-                    }
-                });
-            }
-
-            // 变暗所有元素（除Information层）
-            function dimAllElements(svgDoc) {
-                // 遍历所有线路的元素，统一设为变暗
-                Object.values(allLineData).forEach(line => {
-                    const allIds = [
-                        ...line.lines,
-                        ...line.legend,
-                        ...line.terminalMarks,
-                        ...line.stationMarks,
-                        ...line.stationNames
+                    // 2. 收集当前线路的所有关联元素ID
+                    const highlightIds = [
+                        ...targetLine.lines,
+                        ...targetLine.legend,
+                        ...targetLine.terminalMarks,
+                        ...targetLine.stationMarks,
+                        ...targetLine.stationNames
                     ];
-                    allIds.forEach(id => {
-                        const el = svgDoc.getElementById(id);
-                        if (el) el.classList.add("dimmed");
+
+                    // 3. 将这些元素设为“高亮”状态
+                    highlightIds.forEach(id => {
+                        if (!id) return;
+                        let el = null;
+                        try { el = svgDoc.getElementById(id); } catch(e) { el = null; }
+                        if (!el) el = findSvgElement(svgDoc, id);
+                        if (el) {
+                            try { el.classList.remove("dimmed"); } catch(e) {}
+                        } else {
+                            console.warn(`未找到元素：${id}`);
+                        }
                     });
-                });
-                // 排除Information层（保持常显）
-                const infoLayer = svgDoc.getElementById("Information");
-                if (infoLayer) {
-                    const infoEls = infoLayer.querySelectorAll("*");
-                    infoEls.forEach(el => el.classList.remove("dimmed"));
-                }
-            }
-
-            // 重置所有元素为默认显示
-                resetBtn.addEventListener("click", () => {
-                if (!resetBtn) {
-                    console.warn('未找到 `resetBtn`，无法绑定重置操作。');
-                    return;
                 }
 
-                const allEls = svgDoc.querySelectorAll(".dimmed");
-                allEls.forEach(el => { try { el.classList.remove("dimmed"); } catch(e){} });
-            });
+                // 变暗所有元素（除Information层）
+                function dimAllElements(svgDoc) {
+                    Object.values(allLineData).forEach(line => {
+                        const allIds = [
+                            ...line.lines,
+                            ...line.legend,
+                            ...line.terminalMarks,
+                            ...line.stationMarks,
+                            ...line.stationNames
+                        ];
+                        allIds.forEach(id => {
+                            const el = svgDoc.getElementById(id);
+                            if (el) el.classList.add("dimmed");
+                        });
+                    });
+                    // 排除Information层
+                    const infoLayer = svgDoc.getElementById("Information");
+                    if (infoLayer) {
+                        const infoEls = infoLayer.querySelectorAll("*");
+                        infoEls.forEach(el => el.classList.remove("dimmed"));
+                    }
+                }
 
-                // 模态框初始化（在页面级别进行，不依赖 SVG 加载）
-                // 初始化：绑定图例事件
-                    try { bindLegendClick(); } catch(e) { console.warn('绑定图例时出错：', e); }
-                    try { createHtmlLegend(); } catch(e) { console.warn('生成 HTML 图例时出错：', e); }
+                // 执行初始化
+                try { injectSvgStyles(svgDoc); } catch(e) { console.warn('注入样式时出错：', e); }
+                try { bindLegendClick(); } catch(e) { console.warn('绑定图例时出错：', e); }
+                try { createHtmlLegend(); } catch(e) { console.warn('生成 HTML 图例时出错：', e); }
             });
         })();
 
-        // 全局模态框初始化（不依赖 SVG 加载）
+        // 全局模态框初始化
         (function modalSetup(){
             const titleModalBtn = document.getElementById('titleModalBtn');
             const imageModal = document.getElementById('imageModal');
@@ -458,6 +615,11 @@
                 });
             }
         })();
+
+        // 页面加载完成后初始化缩放控制
+        document.addEventListener('DOMContentLoaded', () => {
+            initZoomControl();
+        });
     </script>
 </body>
 </html>
