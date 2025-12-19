@@ -5,41 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>25121902</title>
     <style>
+        :root { --nav-height: 64px; --footer-height: var(--nav-height); }
         /* Reset */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; width: 100%; }
+
+        /* 顶部固定导航栏 */
+        #topNav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--nav-height);
+            background: transparent; /* 取消背景 */
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 1000;
+            border-bottom: none;
+        }
+        /* 在导航底部添加一条灰色的边框，宽度为页面的 95% 并居中 */
+        #topNav::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            border-bottom: 1px solid #ccc;
+            pointer-events: none;
+        }
+        #topNav .nav-left, #topNav .nav-center, #topNav .nav-right {
+            display: flex;
+            align-items: center;
+        }
+        #topNav .nav-left { flex: 0 0 auto; }
+        #topNav .nav-center { flex: 1; justify-content: center; }
+        /* title-wrap removed: title and icon are separate nav areas */
+        .nav-icon-btn {
+            width: 36px; height: 36px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
+            background: #fff; border: 1px solid #ccc; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            padding: 6px;
+        }
+        .nav-icon-img { width: 18px; height: 18px; display: block; }
+        #topNav .nav-right { flex: 0 0 auto; }
+        #topNav .nav-logo { height: 40px; width: auto; display: block; }
+        #topNav .nav-title { height: 44px; max-width: 60%; width: auto; display: block; }
 
         /* SVG 容器：高度占满浏览器高度，宽度可以超出并可横向滚动 */
         #svgContainer {
             position: relative;
             width: 100%;
-            height: 100vh; /* 占满浏览器高度 */
+            /* 减去顶部导航和底部页脚的高度，避免被遮挡 */
+            height: calc(100vh - var(--nav-height) - var(--footer-height));
+            top: var(--nav-height);
             overflow: auto; /* 可水平/垂直滚动 */
             background: #ffffff;
             z-index: 1;
+            /* margin-top: var(--nav-height); */
         }
         /* object 中的 svg 保持高度填充，宽度自适应原始尺寸（可超出视口） */
         #svgContainer object { width: auto; height: 100%; display: block; min-width: 100%; }
 
-        /* 固定在右下角的重置按钮（保持可点击，不随页面滚动）
-           使用 devicePixelRatio 的逆缩放近似保持在不同缩放级别下的视觉大小不变。
-        */
+        /* 页脚内的重置按钮（已移入页脚右侧） */
         #resetBtn {
-            position: absolute;
-            right: 20px;
-            bottom: 20px;
-            z-index: 9999;
-            padding: 10px 14px;
+            padding: 6px 12px;
             background-color: #409eff;
             color: #fff;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             transform-origin: center center;
         }
         #resetBtn:hover { background-color: #66b1ff; }
+
+        /* 底部固定页脚（样式与导航栏一致，高度为导航栏的一半） */
+        #pageFooter {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: var(--footer-height);
+            background: transparent; /* 取消背景 */
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 1000;
+            border-top: none;
+        }
+        /* 在页脚顶部添加一条灰色的边框，宽度为页面的 95% 并居中 */
+        #pageFooter::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            border-top: 1px solid #ccc;
+            pointer-events: none;
+        }
+        #pageFooter .footer-left, #pageFooter .footer-center, #pageFooter .footer-right {
+            display: flex;
+            align-items: center;
+        }
+        #pageFooter .footer-left { flex: 0 0 240px; display:flex; align-items:center; justify-content:center; }
+        .footer-copy { font-size: 12px; color: #333; }
+        #pageFooter .footer-center { flex: 1; justify-content: center; }
+        #pageFooter .footer-right { flex: 0 0 auto; }
 
         /* SVG 内的变暗/高亮类（作为备用，注入到 SVG 内也会使用） */
         .dimmed { opacity: 0.2; filter: grayscale(100%); transition: opacity .25s ease; }
@@ -48,15 +122,58 @@
         /* 页面侧边 HTML legend（如果存在） */
         .html-legend-entry { padding:6px 10px; border:1px solid #d9d9d9; border-radius:4px; background:#fff; cursor:pointer; margin-right:6px; }
         .html-legend-entry.active { background:#409eff; color:#fff; border-color:#409eff; }
+
+        /* 模态框样式（带过渡动画） */
+        .modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
+        .modal.open { opacity: 1; pointer-events: auto; }
+        .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background 220ms ease; }
+        .modal.open .modal-backdrop { background: rgba(0,0,0,0.5); }
+        .modal-content { position: relative; z-index: 2001; background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.25); max-width: 92%; max-height: calc(100vh - var(--nav-height) - var(--footer-height) - 40px); display: flex; align-items: center; justify-content: center; transform: translateY(-8px) scale(.98); opacity: 0; transition: transform 220ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease; }
+        .modal.open .modal-content { transform: translateY(0) scale(1); opacity: 1; }
+        .modal-body img { max-width: 100%; max-height: 100%; display:block; }
+        .modal-close { position: absolute; top: 8px; right: 8px; background: transparent; border: none; font-size: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <!-- 固定重置按钮（右下角） -->
-    <button id="resetBtn">重置</button>
+    <!-- 顶部固定导航栏 -->
+    <nav id="topNav" role="navigation" aria-label="主导航">
+        <div class="nav-left">
+            <img src="logo.png" alt="Logo" class="nav-logo" />
+        </div>
+        <div class="nav-center">
+            <img src="mainTitle.png" alt="主标题" class="nav-title" />
+        </div>
+        <div class="nav-right">
+            <button id="titleModalBtn" class="nav-icon-btn" aria-haspopup="dialog" aria-controls="imageModal" title="查看 artTime">
+                <img src="time.svg" alt="time" class="nav-icon-img" />
+            </button>
+        </div>
+    </nav>
+
+    <!-- 页脚（固定在底部），重置按钮移至右侧 -->
+    <footer id="pageFooter" role="contentinfo">
+        <div class="footer-left"><small class="footer-copy">Copyright © Leshan HuaiRen Cyber Tech</small></div>
+        <div class="footer-center"><!-- 中间预留 --></div>
+        <div class="footer-right">
+            <button id="resetBtn">重置</button>
+        </div>
+    </footer>
+
+    <!-- 图片模态框（默认隐藏） -->
+    <div id="imageModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="imageModalTitle">
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-content">
+            <button class="modal-close" aria-label="关闭">×</button>
+            <h2 id="imageModalTitle" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">Art Time</h2>
+            <div class="modal-body">
+                <img src="artTime.jpg" alt="Art Time" />
+            </div>
+        </div>
+    </div>
 
     <!-- SVG 容器（占满全屏） -->
     <div id="svgContainer">
-        <object id="lineSvg" data="art25121902.svg" type="image/svg+xml"></object>
+        <object id="lineSvg" data="art25121903.svg" type="image/svg+xml"></object>
     </div>
 
     <script>
@@ -296,7 +413,7 @@
             }
 
             // 重置所有元素为默认显示
-            resetBtn.addEventListener("click", () => {
+                resetBtn.addEventListener("click", () => {
                 if (!resetBtn) {
                     console.warn('未找到 `resetBtn`，无法绑定重置操作。');
                     return;
@@ -305,10 +422,41 @@
                 const allEls = svgDoc.querySelectorAll(".dimmed");
                 allEls.forEach(el => { try { el.classList.remove("dimmed"); } catch(e){} });
             });
+
+                // 模态框初始化（在页面级别进行，不依赖 SVG 加载）
                 // 初始化：绑定图例事件
                     try { bindLegendClick(); } catch(e) { console.warn('绑定图例时出错：', e); }
                     try { createHtmlLegend(); } catch(e) { console.warn('生成 HTML 图例时出错：', e); }
             });
+        })();
+
+        // 全局模态框初始化（不依赖 SVG 加载）
+        (function modalSetup(){
+            const titleModalBtn = document.getElementById('titleModalBtn');
+            const imageModal = document.getElementById('imageModal');
+            const modalClose = imageModal && imageModal.querySelector('.modal-close');
+
+            function openModal() {
+                if (!imageModal) return;
+                imageModal.classList.add('open');
+                imageModal.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', escHandler);
+            }
+            function closeModal() {
+                if (!imageModal) return;
+                imageModal.classList.remove('open');
+                imageModal.setAttribute('aria-hidden', 'true');
+                document.removeEventListener('keydown', escHandler);
+            }
+            function escHandler(e) { if (e.key === 'Escape') closeModal(); }
+
+            if (titleModalBtn) titleModalBtn.addEventListener('click', openModal);
+            if (modalClose) modalClose.addEventListener('click', closeModal);
+            if (imageModal) {
+                imageModal.addEventListener('click', (ev) => {
+                    if (ev.target === imageModal || ev.target.hasAttribute('data-close')) closeModal();
+                });
+            }
         })();
     </script>
 </body>
