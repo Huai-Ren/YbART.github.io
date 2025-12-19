@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>25121903</title>
+    <title>25121904</title>
     <style>
         :root { --nav-height: 64px; --footer-height: var(--nav-height); }
         /* Reset */
@@ -51,35 +51,33 @@
         #topNav .nav-logo { height: 40px; width: auto; display: block; }
         #topNav .nav-title { height: 44px; max-width: 100%; width: auto; display: block; }
 
-        /* SVG 容器：修复触摸事件穿透问题 */
+        /* SVG 容器：恢复滚动 + 优化触摸 */
         #svgContainer {
             position: relative;
             width: 100%;
             height: calc(100vh - var(--nav-height) - var(--footer-height));
             top: var(--nav-height);
-            overflow: hidden; /* 改为hidden防止滚动冲突 */
+            overflow: auto; /* 恢复滚动 */
             background: #ffffff;
             z-index: 1;
-            touch-action: none; /* 禁用浏览器默认触摸行为，手动处理 */
+            touch-action: pan-x pan-y; /* 允许原生滚动 */
             cursor: grab;
         }
         #svgWrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: relative;
             transform-origin: 0 0;
             width: auto;
+            min-width: 100%;
             height: 100%;
         }
-        /* 关键：让SVG的触摸事件穿透到容器 */
         #lineSvg {
             width: auto; 
             height: 100%; 
             display: block; 
             min-width: 100%;
             transform-origin: 0 0;
-            pointer-events: auto; /* 保留点击交互，但允许触摸事件冒泡 */
-            touch-action: none; /* 禁用SVG自身的触摸行为 */
+            pointer-events: auto;
+            touch-action: none;
         }
 
         /* 重置按钮样式 */
@@ -194,23 +192,13 @@
     </div>
 
     <script>
-        // 全局变量：存储所有线路的映射数据
+        // 全局变量
         let allLineData = {};
-        // 缩放相关变量
-        let currentScale = 1;
-        let currentX = 0;
-        let currentY = 0;
-        // 触摸状态变量
-        let isDragging = false;
-        let isScaling = false;
-        let touchStart = {
-            distance: 0,
-            centerX: 0,
-            centerY: 0,
-            scale: 1,
-            x: 0,
-            y: 0
-        };
+        let currentScale = 1; // 缩放比例
+        let isTwoFinger = false; // 是否双指操作
+        let startScale = 1;
+        let startDistance = 0;
+        
         // 线路JSON文件列表
         const lineJsonFiles = [
             "T1_Branch.json",
@@ -221,14 +209,13 @@
             "T4_Branch.json"
         ];
 
-        // 步骤1：加载所有线路的JSON数据
+        // 加载线路数据
         async function loadAllLineData() {
             try {
                 for (const fileName of lineJsonFiles) {
                     const response = await fetch(fileName);
                     if (!response.ok) throw new Error(`加载${fileName}失败`);
                     const lineData = await response.json();
-                    // 合并到全局数据（取JSON的根键作为线路ID）
                     const lineId = Object.keys(lineData)[0];
                     allLineData[lineId] = lineData[lineId];
                 }
@@ -238,186 +225,82 @@
             }
         }
 
-        // 计算两点触摸距离
-        function getTouchDistance(t1, t2) {
-            const dx = t2.clientX - t1.clientX;
-            const dy = t2.clientY - t1.clientY;
+        // 计算两点距离
+        function getDistance(touch1, touch2) {
+            const dx = touch2.clientX - touch1.clientX;
+            const dy = touch2.clientY - touch1.clientY;
             return Math.sqrt(dx * dx + dy * dy);
         }
 
-        // 计算触摸中心点
-        function getTouchCenter(t1, t2) {
-            return {
-                x: (t1.clientX + t2.clientX) / 2,
-                y: (t1.clientY + t2.clientY) / 2
-            };
+        // 更新缩放
+        function updateScale(newScale) {
+            // 限制缩放范围 0.5-3倍
+            currentScale = Math.max(0.5, Math.min(3, newScale));
+            const svgWrapper = document.getElementById('svgWrapper');
+            svgWrapper.style.transform = `scale(${currentScale})`;
+            
+            // 缩放后自动调整滚动位置，保持视觉中心
+            const container = document.getElementById('svgContainer');
+            const rect = svgWrapper.getBoundingClientRect();
+            if (rect.width > container.clientWidth) {
+                container.scrollLeft = (rect.width - container.clientWidth) / 2;
+            }
+            if (rect.height > container.clientHeight) {
+                container.scrollTop = (rect.height - container.clientHeight) / 2;
+            }
         }
 
-        // 更新SVG变换
-        function updateSvgTransform() {
+        // 初始化触摸缩放
+        function initZoom() {
+            const container = document.getElementById('svgContainer');
             const svgWrapper = document.getElementById('svgWrapper');
-            svgWrapper.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale})`;
-        }
 
-        // 初始化触摸/缩放控制（核心修复：监听document级别触摸事件，判断目标是否在SVG容器内）
-        function initTouchControl() {
-            const svgContainer = document.getElementById('svgContainer');
-            const svgWrapper = document.getElementById('svgWrapper');
-            const lineSvg = document.getElementById('lineSvg');
-
-            // 阻止SVG自身的触摸事件默认行为
-            lineSvg.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
-            lineSvg.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: false });
-            lineSvg.addEventListener('touchend', (e) => e.stopPropagation(), { passive: false });
-
-            // === 核心修复：监听document的触摸事件，覆盖整个页面 ===
-            document.addEventListener('touchstart', handleTouchStart, { passive: false });
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTouchEnd, { passive: false });
-            document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
-
-            // 桌面端鼠标支持
-            svgContainer.addEventListener('mousedown', handleMouseDown);
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            svgContainer.addEventListener('wheel', handleMouseWheel, { passive: false });
-
-            // 触摸开始处理
-            function handleTouchStart(e) {
-                // 判断触摸目标是否在SVG容器内（包括SVG内部元素）
-                const target = e.target;
-                const isInSvgContainer = svgContainer.contains(target) || 
-                                        (lineSvg.contentDocument && lineSvg.contentDocument.contains(target));
-                
-                if (!isInSvgContainer) return; // 非SVG区域不处理
-
-                e.preventDefault(); // 阻止浏览器默认行为
-                const touches = e.touches;
-
-                if (touches.length === 1) {
-                    // 单指拖动
-                    isScaling = false;
-                    isDragging = true;
-                    touchStart.x = touches[0].clientX - currentX;
-                    touchStart.y = touches[0].clientY - currentY;
-                    svgContainer.style.cursor = 'grabbing';
-                } else if (touches.length === 2) {
-                    // 双指缩放
-                    isDragging = false;
-                    isScaling = true;
-                    touchStart.distance = getTouchDistance(touches[0], touches[1]);
-                    touchStart.scale = currentScale;
-                    const center = getTouchCenter(touches[0], touches[1]);
-                    const rect = svgContainer.getBoundingClientRect();
-                    touchStart.centerX = center.x - rect.left;
-                    touchStart.centerY = center.y - rect.top;
+            // 触摸开始
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    isTwoFinger = true;
+                    startDistance = getDistance(e.touches[0], e.touches[1]);
+                    startScale = currentScale;
+                    e.preventDefault(); // 双指时阻止默认滚动
+                } else {
+                    isTwoFinger = false;
                 }
-            }
+            }, { passive: false });
 
-            // 触摸移动处理
-            function handleTouchMove(e) {
-                if (!isDragging && !isScaling) return;
-                
-                e.preventDefault(); // 阻止滚动等默认行为
-                const touches = e.touches;
-                const rect = svgContainer.getBoundingClientRect();
-
-                if (touches.length === 1 && isDragging) {
-                    // 单指拖动
-                    currentX = touches[0].clientX - touchStart.x;
-                    currentY = touches[0].clientY - touchStart.y;
-                    updateSvgTransform();
-                } else if (touches.length === 2 && isScaling) {
-                    // 双指缩放
-                    const newDistance = getTouchDistance(touches[0], touches[1]);
-                    if (touchStart.distance === 0) return;
-
-                    // 计算新缩放比例（限制0.5-3倍）
-                    const scaleRatio = newDistance / touchStart.distance;
-                    const newScale = Math.max(0.5, Math.min(3, touchStart.scale * scaleRatio));
-                    
-                    // 基于触摸中心调整偏移（关键：保持缩放中心不变）
-                    const center = getTouchCenter(touches[0], touches[1]);
-                    const newCenterX = center.x - rect.left;
-                    const newCenterY = center.y - rect.top;
-
-                    currentX += (newCenterX - touchStart.centerX) - (newCenterX - touchStart.centerX) * (newScale / touchStart.scale);
-                    currentY += (newCenterY - touchStart.centerY) - (newCenterY - touchStart.centerY) * (newScale / touchStart.scale);
-                    
-                    currentScale = newScale;
-                    updateSvgTransform();
+            // 触摸移动
+            container.addEventListener('touchmove', (e) => {
+                if (isTwoFinger && e.touches.length === 2) {
+                    const newDistance = getDistance(e.touches[0], e.touches[1]);
+                    const scaleRatio = newDistance / startDistance;
+                    const newScale = startScale * scaleRatio;
+                    updateScale(newScale);
+                    e.preventDefault();
                 }
-            }
+                // 单指时不阻止，保留原生滚动
+            }, { passive: false });
 
-            // 触摸结束处理
-            function handleTouchEnd(e) {
-                if (e.touches.length === 0) {
-                    isDragging = false;
-                    isScaling = false;
-                    svgContainer.style.cursor = 'grab';
-                } else if (e.touches.length === 1) {
-                    // 只剩单指，切换为拖动模式
-                    isScaling = false;
-                    isDragging = true;
-                    touchStart.x = e.touches[0].clientX - currentX;
-                    touchStart.y = e.touches[0].clientY - currentY;
-                }
-            }
-
-            // 鼠标按下（桌面端）
-            function handleMouseDown(e) {
-                if (e.button !== 0) return; // 只处理左键
-                isDragging = true;
-                isScaling = false;
-                touchStart.x = e.clientX - currentX;
-                touchStart.y = e.clientY - currentY;
-                svgContainer.style.cursor = 'grabbing';
-                e.preventDefault();
-            }
-
-            // 鼠标移动（桌面端）
-            function handleMouseMove(e) {
-                if (!isDragging) return;
-                currentX = e.clientX - touchStart.x;
-                currentY = e.clientY - touchStart.y;
-                updateSvgTransform();
-            }
-
-            // 鼠标松开（桌面端）
-            function handleMouseUp() {
-                isDragging = false;
-                svgContainer.style.cursor = 'grab';
-            }
+            // 触摸结束
+            container.addEventListener('touchend', () => {
+                isTwoFinger = false;
+            });
 
             // 鼠标滚轮缩放（桌面端）
-            function handleMouseWheel(e) {
+            container.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const rect = svgContainer.getBoundingClientRect();
-                // 计算鼠标在容器内的相对位置
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                // 计算缩放增量（每次滚动±10%）
                 const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                const newScale = Math.max(0.5, Math.min(3, currentScale + delta));
-                
-                // 调整偏移，保持鼠标位置为缩放中心
-                currentX = mouseX - (mouseX - currentX) * (newScale / currentScale);
-                currentY = mouseY - (mouseY - currentY) * (newScale / currentScale);
-                
-                currentScale = newScale;
-                updateSvgTransform();
-            }
+                updateScale(currentScale + delta);
+            }, { passive: false });
 
-            // 重置按钮功能
+            // 重置按钮
             document.getElementById('resetBtn').addEventListener('click', () => {
                 currentScale = 1;
-                currentX = 0;
-                currentY = 0;
-                updateSvgTransform();
+                svgWrapper.style.transform = 'scale(1)';
+                // 重置滚动位置
+                container.scrollLeft = 0;
+                container.scrollTop = 0;
                 
                 // 重置SVG元素显示状态
-                const svgDoc = lineSvg.contentDocument;
+                const svgDoc = document.getElementById('lineSvg').contentDocument;
                 if (svgDoc) {
                     const allEls = svgDoc.querySelectorAll(".dimmed");
                     allEls.forEach(el => { 
@@ -426,11 +309,11 @@
                 }
             });
 
-            // 初始化变换
-            updateSvgTransform();
+            // 初始化缩放为1
+            updateScale(1);
         }
 
-        // 步骤2：初始化SVG交互（等待SVG加载完成）
+        // 初始化SVG交互
         (function setupSvgHandler(){
             const lineSvgEl = document.getElementById("lineSvg");
             if (!lineSvgEl) {
@@ -439,230 +322,125 @@
             }
 
             lineSvgEl.addEventListener("load", async function() {
-                // 先加载所有线路数据
                 await loadAllLineData();
                 const svgDoc = this.contentDocument;
-                if (!svgDoc) {
-                    console.warn('SVG 的 contentDocument 未能获取，可能被浏览器或安全策略阻止。');
-                    return;
-                }
+                if (!svgDoc) return;
 
-                // 注入样式，确保 SVG 内的 .dimmed/.highlighted 能生效
-                function injectSvgStyles(svgDoc) {
+                // 注入SVG样式
+                function injectSvgStyles() {
                     try {
-                        const svgRoot = svgDoc.documentElement || svgDoc.querySelector('svg');
-                        if (!svgRoot) return;
                         const styleEl = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'style');
                         styleEl.textContent = `
                         .dimmed { opacity: 0.2 !important; filter: grayscale(100%) !important; }
                         .highlighted { opacity: 1 !important; filter: none !important; }
                         `;
-                        svgRoot.appendChild(styleEl);
-                        console.log('已向嵌入 SVG 注入高亮样式。');
+                        svgDoc.documentElement.appendChild(styleEl);
                     } catch (e) {
                         console.warn('注入 SVG 样式失败：', e);
                     }
                 }
 
-                // 绑定图例的点击事件
-                function bindLegendClick() {
-                    const attempts = [];
-                    Object.entries(allLineData).forEach(([lineId, line]) => {
-                        const legendId = (line.legend && line.legend[0]) || null;
-                        if (!legendId) return;
-                        attempts.push(legendId);
-
-                        const legendEl = findSvgElement(svgDoc, legendId);
-                        if (!legendEl) {
-                            console.warn('未在SVG中找到图例元素，跳过（会在页面侧边生成后备图例）：', legendId);
-                            return;
-                        }
-
-                        try {
-                            legendEl.addEventListener("click", () => {
-                                console.log('SVG 内图例被点击：', legendId);
-                                highlightLine(line);
-                            });
-                            if (legendEl.style) legendEl.style.cursor = "pointer";
-                            console.log('已绑定 SVG 图例：', legendId);
-                        } catch (e) {
-                            console.warn('绑定图例事件失败：', e, legendId);
-                        }
-
-                        // 为terminalMarks添加点击绑定
-                        if (Array.isArray(line.terminalMarks)) {
-                            line.terminalMarks.forEach(tid => {
-                                if (!tid) return;
-                                const tEl = findSvgElement(svgDoc, tid) || svgDoc.getElementById(tid);
-                                if (!tEl) {
-                                    console.warn('未在SVG中找到 terminalMark 元素（跳过）：', tid);
-                                    return;
-                                }
-                                try {
-                                    tEl.addEventListener('click', () => {
-                                        console.log('SVG 终点标记被点击：', tid, '-> 线路', lineId);
-                                        highlightLine(line);
-                                    });
-                                    if (tEl.style) tEl.style.cursor = 'pointer';
-                                    console.log('已绑定 SVG 终点标记：', tid);
-                                } catch (err) {
-                                    console.warn('绑定 terminalMark 事件失败：', err, tid);
-                                }
-                            });
-                        }
-                    });
-                    console.info('尝试绑定的图例 id 列表：', attempts);
-                }
-
-                // 生成页面侧边的 HTML legend 作为后备
-                function createHtmlLegend() {
-                    const htmlLegendContainer = document.getElementById('htmlLegendContainer');
-                    if (!htmlLegendContainer) return;
-                    htmlLegendContainer.innerHTML = '';
-                    Object.entries(allLineData).forEach(([lineId, line]) => {
-                        const legendId = (line.legend && line.legend[0]) || lineId;
-                        const entry = document.createElement('button');
-                        entry.type = 'button';
-                        entry.className = 'html-legend-entry';
-                        entry.textContent = lineId;
-                        entry.title = legendId;
-                        entry.addEventListener('click', () => {
-                            console.log('HTML legend 点击：', lineId, legendId);
-                            const others = htmlLegendContainer.querySelectorAll('.html-legend-entry');
-                            others.forEach(o => o.classList.remove('active'));
-                            entry.classList.add('active');
-                            highlightLine(line);
-                        });
-                        htmlLegendContainer.appendChild(entry);
-                    });
-                }
-
-                // 在SVG中查找元素的健壮方法
-                function findSvgElement(svgDoc, idOrLabel) {
-                    if (!svgDoc || !idOrLabel) return null;
-
-                    // 1) 精确 id
-                    try { const exact = svgDoc.getElementById(idOrLabel); if (exact) return exact; } catch(e) {}
-
-                    // 2) 部分匹配 id
-                    try {
-                        const partial = svgDoc.querySelector(`[id*="${CSS.escape ? CSS.escape(idOrLabel) : idOrLabel}"]`);
-                        if (partial) return partial;
-                    } catch(e) {}
-
-                    // 3) 遍历所有带id元素查找
-                    try {
-                        const els = svgDoc.querySelectorAll('[id]');
-                        for (let i=0;i<els.length;i++){
-                            const el = els[i];
-                            if (el.id && el.id.indexOf(idOrLabel) !== -1) return el;
-                        }
-                    } catch(e){}
-
-                    // 4) 按文本内容查找
-                    try {
-                        const normalize = s => (s || '').toString().trim().replace(/[_\s]+/g, '').toLowerCase();
-                        const target = normalize(idOrLabel);
-                        const textEls = svgDoc.querySelectorAll('text, tspan');
-                        for (let i=0;i<textEls.length;i++){
-                            const t = textEls[i];
-                            if (normalize(t.textContent) === target) return t;
-                        }
-                    } catch(e){}
-
+                // 查找SVG元素
+                function findSvgElement(idOrLabel) {
+                    if (!idOrLabel) return null;
+                    // 精确ID
+                    let el = svgDoc.getElementById(idOrLabel);
+                    if (el) return el;
+                    // 部分匹配ID
+                    el = svgDoc.querySelector(`[id*="${idOrLabel}"]`);
+                    if (el) return el;
+                    // 文本匹配
+                    const textEls = svgDoc.querySelectorAll('text, tspan');
+                    for (let i=0; i<textEls.length; i++) {
+                        if (textEls[i].textContent.includes(idOrLabel)) return textEls[i];
+                    }
                     return null;
                 }
 
-                // 高亮指定线路的所有元素
+                // 高亮线路
                 function highlightLine(targetLine) {
-                    // 1. 先将所有元素设为“变暗”状态（除Information层）
-                    dimAllElements(svgDoc);
-
-                    // 2. 收集当前线路的所有关联元素ID
-                    const highlightIds = [
-                        ...targetLine.lines,
-                        ...targetLine.legend,
-                        ...targetLine.terminalMarks,
-                        ...targetLine.stationMarks,
-                        ...targetLine.stationNames
-                    ];
-
-                    // 3. 将这些元素设为“高亮”状态
-                    highlightIds.forEach(id => {
-                        if (!id) return;
-                        let el = null;
-                        try { el = svgDoc.getElementById(id); } catch(e) { el = null; }
-                        if (!el) el = findSvgElement(svgDoc, id);
-                        if (el) {
-                            try { el.classList.remove("dimmed"); } catch(e) {}
-                        } else {
-                            console.warn(`未找到元素：${id}`);
-                        }
-                    });
-                }
-
-                // 变暗所有元素（除Information层）
-                function dimAllElements(svgDoc) {
+                    // 变暗所有元素
                     Object.values(allLineData).forEach(line => {
-                        const allIds = [
-                            ...line.lines,
-                            ...line.legend,
-                            ...line.terminalMarks,
-                            ...line.stationMarks,
-                            ...line.stationNames
-                        ];
-                        allIds.forEach(id => {
-                            const el = svgDoc.getElementById(id);
-                            if (el) el.classList.add("dimmed");
-                        });
+                        [].concat(line.lines, line.legend, line.terminalMarks, line.stationMarks, line.stationNames)
+                           .forEach(id => {
+                               const el = findSvgElement(id);
+                               if (el) el.classList.add("dimmed");
+                           });
                     });
-                    // 排除Information层
+                    // 高亮目标线路
+                    [].concat(targetLine.lines, targetLine.legend, targetLine.terminalMarks, targetLine.stationMarks, targetLine.stationNames)
+                       .forEach(id => {
+                           const el = findSvgElement(id);
+                           if (el) el.classList.remove("dimmed");
+                       });
+                    // 保留Information层
                     const infoLayer = svgDoc.getElementById("Information");
                     if (infoLayer) {
-                        const infoEls = infoLayer.querySelectorAll("*");
-                        infoEls.forEach(el => el.classList.remove("dimmed"));
+                        infoLayer.querySelectorAll("*").forEach(el => el.classList.remove("dimmed"));
                     }
                 }
 
+                // 绑定图例点击
+                function bindLegendEvents() {
+                    Object.entries(allLineData).forEach(([lineId, line]) => {
+                        // 绑定图例
+                        const legendId = line.legend?.[0];
+                        if (legendId) {
+                            const legendEl = findSvgElement(legendId);
+                            if (legendEl) {
+                                legendEl.style.cursor = "pointer";
+                                legendEl.addEventListener("click", () => highlightLine(line));
+                            }
+                        }
+                        // 绑定终点标记
+                        (line.terminalMarks || []).forEach(tid => {
+                            const tEl = findSvgElement(tid);
+                            if (tEl) {
+                                tEl.style.cursor = "pointer";
+                                tEl.addEventListener("click", () => highlightLine(line));
+                            }
+                        });
+                    });
+                }
+
                 // 执行初始化
-                try { injectSvgStyles(svgDoc); } catch(e) { console.warn('注入样式时出错：', e); }
-                try { bindLegendClick(); } catch(e) { console.warn('绑定图例时出错：', e); }
-                try { createHtmlLegend(); } catch(e) { console.warn('生成 HTML 图例时出错：', e); }
+                injectSvgStyles();
+                bindLegendEvents();
             });
         })();
 
-        // 全局模态框初始化
+        // 初始化模态框
         (function modalSetup(){
-            const titleModalBtn = document.getElementById('titleModalBtn');
-            const imageModal = document.getElementById('imageModal');
-            const modalClose = imageModal && imageModal.querySelector('.modal-close');
+            const modal = document.getElementById('imageModal');
+            const openBtn = document.getElementById('titleModalBtn');
+            const closeBtn = modal?.querySelector('.modal-close');
+            const backdrop = modal?.querySelector('.modal-backdrop');
 
-            function openModal() {
-                if (!imageModal) return;
-                imageModal.classList.add('open');
-                imageModal.setAttribute('aria-hidden', 'false');
-                document.addEventListener('keydown', escHandler);
-            }
+            if (!modal || !openBtn) return;
+
+            openBtn.addEventListener('click', () => {
+                modal.classList.add('open');
+                modal.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', escClose);
+            });
+
             function closeModal() {
-                if (!imageModal) return;
-                imageModal.classList.remove('open');
-                imageModal.setAttribute('aria-hidden', 'true');
-                document.removeEventListener('keydown', escHandler);
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+                document.removeEventListener('keydown', escClose);
             }
-            function escHandler(e) { if (e.key === 'Escape') closeModal(); }
 
-            if (titleModalBtn) titleModalBtn.addEventListener('click', openModal);
-            if (modalClose) modalClose.addEventListener('click', closeModal);
-            if (imageModal) {
-                imageModal.addEventListener('click', (ev) => {
-                    if (ev.target === imageModal || ev.target.hasAttribute('data-close')) closeModal();
-                });
+            function escClose(e) {
+                if (e.key === 'Escape') closeModal();
             }
+
+            closeBtn?.addEventListener('click', closeModal);
+            backdrop?.addEventListener('click', closeModal);
         })();
 
-        // 页面加载完成后初始化
+        // 页面加载完成初始化
         document.addEventListener('DOMContentLoaded', () => {
-            initTouchControl(); // 优先初始化触摸控制
+            initZoom();
         });
     </script>
 </body>
